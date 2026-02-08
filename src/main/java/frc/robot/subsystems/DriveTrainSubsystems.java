@@ -42,25 +42,30 @@ public class DriveTrainSubsystems extends SubsystemBase {
   private final DifferentialDriveOdometry m_odometry;
 
   public DriveTrainSubsystems() {
-    configureMotors();
+    // SparkMax yapılandırması - Hataları önlemek için try-catch bloğu ve optimize edilmiş ayarlar
+    try {
+        configureMotors();
+    } catch (Exception e) {
+        DriverStation.reportError("Motor yapılandırması sırasında hata: " + e.getMessage(), false);
+    }
     
     m_leftEncoder = m_leftLeader.getEncoder();
     m_rightEncoder = m_rightLeader.getEncoder();
 
-    // Reset gyro on init needed? Maybe not, usually done in auto init or manually.
-    
+    // Odometri başlatma
     m_odometry = new DifferentialDriveOdometry(
         m_gyro.getRotation2d(), 
         m_leftEncoder.getPosition(), 
         m_rightEncoder.getPosition()
     );
 
+    // PathPlanner konfigürasyonu - RobotConfig yüklenemezse kodun çökmemesi için koruma
     configurePathPlanner();
   }
 
   private void configureMotors() {
     SparkMaxConfig config = new SparkMaxConfig();
-    config.idleMode(IdleMode.kBrake);
+    config.idleMode(IdleMode.kCoast);
     
     // Encoder dönüşüm faktörleri (Meters)
     // 2 * PI * Radius / GearRatio
@@ -70,22 +75,36 @@ public class DriveTrainSubsystems extends SubsystemBase {
     config.encoder.positionConversionFactor(positionFactor);
     config.encoder.velocityConversionFactor(velocityFactor);
 
-    m_leftLeader.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    m_rightLeader.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    // YUMUSATMA AYARLARI (Titremeyi engeller)
+    config.openLoopRampRate(0.3); // Joystick hareketlerini yumuşatır
+    config.closedLoopRampRate(0.3);
+    config.voltageCompensation(12.0);
+    
+    // Akım limitleri - Motorları korumak ve voltaj çökmesini engellemek için önemli
+    config.smartCurrentLimit(50);
+
+    // Leader Motor Konfigürasyonu
+    // ResetMode.kResetSafeParameters -> REVLib 2025'te deprecated olabilir, yerine sadece config apply edilir.
+    // Ancak library sürümüne göre değişir. En güvenli yöntem config objesini temizleyip uygulamaktır.
+    
+    m_leftLeader.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    
+    // Sağ lider için konfigürasyon (Ters çevirme config içinde)
+    SparkMaxConfig rightLeaderConfig = new SparkMaxConfig();
+    rightLeaderConfig.apply(config);
+    rightLeaderConfig.inverted(true);
+    m_rightLeader.configure(rightLeaderConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     
     // Follower Config
     SparkMaxConfig leftFollowerConfig = new SparkMaxConfig();
+    leftFollowerConfig.apply(config);
     leftFollowerConfig.follow(m_leftLeader);
-    m_leftFollower.configure(leftFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_leftFollower.configure(leftFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
     SparkMaxConfig rightFollowerConfig = new SparkMaxConfig();
+    rightFollowerConfig.apply(config);
     rightFollowerConfig.follow(m_rightLeader);
-    m_rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Sağ tarafı ters çevir (DifferentialDrive genellikle halleder ama config seviyesinde yapmak daha iyidir, 
-    // ama DifferentialDrive kullanıyorsak bazen setInverted gerekebilir. 
-    // Burada leader'ı invert ediyoruz.)
-    m_rightLeader.setInverted(true); 
+    m_rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
   }
 
   private void configurePathPlanner() {
@@ -109,6 +128,7 @@ public class DriveTrainSubsystems extends SubsystemBase {
               this
           );
       } catch (Exception e) {
+          DriverStation.reportError("PathPlanner Kurulum Hatası! Dosyalar yüklenmemiş olabilir: " + e.getMessage(), true);
           e.printStackTrace();
       }
   }

@@ -27,30 +27,42 @@ public final class Constants {
 
   public static class DriveConstants {
     // Motor CAN ID'leri
-    public static final int kLeftFrontID = 1;
-    public static final int kLeftBackID = 2;
-    public static final int kRightFrontID = 3;
-    public static final int kRightBackID = 4;
+    public static final int kLeftFrontID = 11;
+    public static final int kLeftBackID = 12;//12
+    public static final int kRightFrontID = 13; 
+    public static final int kRightBackID = 14; // 4 yerine tahmin ediyorum, SparkMax hatasına göre düzenlenmeli
 
     // Gyro
-    public static final int kPigeonID = 0;
+    public static final int kPigeonID = 15;
 
-    // PID ve Feedforward Constants
-    public static final double kS = 0.1;
-    public static final double kV = 0.1; 
-    public static final double kA = 0.1;
-    public static final double kP = 0.1;
+    // --- FİZİKSEL ÖLÇÜMLER (MUTLAKA DÜZENLE) ---
+    // İki teker arası mesafe (Track Width) - Metre cinsinden ölç!
+    public static final double kTrackWidthMeters = Units.inchesToMeters(24.0); 
+    
+    // Tekerlek Yarıçapı (Radius) - Metre cinsinden
+    // 6 inç tekerlek için yarıçap 3 inçtir.
+    public static final double kWheelRadiusMeters = Units.inchesToMeters(3.0); 
+
+    // Sanziman Orani (Gear Ratio)
+    // Motorun bir tur tekerleği döndürmesi için kaç tur atması gerektiği (Kit of Parts chassis genelde 10.71 veya 8.45 olur)
+    public static final double kGearRatio = 10.71;
+
+
+    // --- KONTROL SABİTLERİ (SYSID İLE BULUNMASI ÖNERİLİR) ---
+    // Tahmini başlangıç değerleri:
+    public static final double kS = 0.22; // Statik Sürtünme (Robotu kıpırdatan min voltaj)
+    public static final double kV = 2.5;  // Hız sabiti (12 Volt / Max Hız formülünden yaklaşık hesap)
+    public static final double kA = 0.4;  // İvme sabiti
+    
+    public static final double kP = 2.0;  // Hatayı düzeltme gücü (Otonomda robot titrerse bunu azalt)
     public static final double kI = 0.0;
     public static final double kD = 0.0;
 
-    public static final double kTrackWidthMeters = Units.inchesToMeters(24.0);
+    public static final double kMaxSpeedMetersPerSecond = 4.0; // Robotun max hızı (m/s)
+    public static final double kMaxAccelerationMetersPerSecondSquared = 2.5; // Max ivmelenme
+
     public static final DifferentialDriveKinematics kDriveKinematics = new DifferentialDriveKinematics(
         kTrackWidthMeters);
 
-    public static final double kMaxSpeedMetersPerSecond = 4.0;
-    public static final double kMaxAccelerationMetersPerSecondSquared = 2.0;
-
-    public static final double kGearRatio = 10.71;
-    public static final double kWheelRadiusMeters = Units.inchesToMeters(3.0);
   }
 }

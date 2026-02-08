@@ -32,8 +32,14 @@ public class RobotContainer {
     // Configure the trigger bindings
     configureBindings();
 
-    // Auto Chooser yapılandırması
-    autoChooser = com.pathplanner.lib.auto.AutoBuilder.buildAutoChooser();
+    // Auto Chooser yapılandırması - Hata korumalı
+    if (com.pathplanner.lib.auto.AutoBuilder.isConfigured()) {
+        autoChooser = com.pathplanner.lib.auto.AutoBuilder.buildAutoChooser();
+    } else {
+        // Eğer PathPlanner ayarlanmadıysa boş bir menü oluştur, böylece robot çökmez
+        autoChooser = new edu.wpi.first.wpilibj.smartdashboard.SendableChooser<>();
+        autoChooser.setDefaultOption("PathPlanner Ayarlanmadı!", new edu.wpi.first.wpilibj2.command.InstantCommand());
+    }
     edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putData("Auto Chooser", autoChooser);
   }
 
@@ -51,7 +57,7 @@ public class RobotContainer {
     m_robotDrive.setDefaultCommand(
         m_robotDrive.run(() -> m_robotDrive.arcadeDrive(
             -m_driverController.getLeftY(), 
-            -m_driverController.getRightX()
+            -m_driverController.getRawAxis(0)
         ))
     );
   }
