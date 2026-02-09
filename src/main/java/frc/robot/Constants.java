@@ -65,4 +65,16 @@ public final class Constants {
         kTrackWidthMeters);
 
   }
+  
+  public static class ShooterConstants {
+    public static final int kShooterKrakenID = 22;
+    // Tek motorlu Kraken Shooter
+    
+    public static final double kShooterSpeed = 0.3; // %50 güç
+  }
+
+  public static class ConveyorConstants {
+    public static final int kConveyorSparkID = 40;
+    public static final double kConveyorSpeed = 0.5;
+  }
 }

@@ -6,7 +6,10 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.DriveTrainSubsystems;
+import frc.robot.subsystems.ShooterSubsystem;
+import frc.robot.subsystems.ConveyorSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands; // Komut grupları için gerekli
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
@@ -20,6 +23,8 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
   private final DriveTrainSubsystems m_robotDrive = new DriveTrainSubsystems();
+  private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
+  private final ConveyorSubsystem m_conveyorSubsystem = new ConveyorSubsystem();
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
@@ -59,6 +64,33 @@ public class RobotContainer {
             -m_driverController.getLeftY(), 
             -m_driverController.getRawAxis(0)
         ))
+    );
+
+    // Shooter Kontrolü: 6. Buton (Xbox Right Bumper / RB)
+    // Basılı tutulduğunda çalışır, bırakıldığında durur.
+    m_driverController.button(1).whileTrue(m_shooterSubsystem.runShooterReverseCommand());//alma
+
+    // BUTON 20: Shooter Hemen Başlar, 3 Saniye Sonra Conveyor Başlar
+    // İkisi de tuş bırakılınca durur. ATIŞ İÇERİDEN ALMA
+    m_driverController.button(5).whileTrue(
+        Commands.parallel(
+            m_shooterSubsystem.runShooterCommand(-0.8),
+            Commands.sequence(
+                Commands.waitSeconds(1.0),
+                m_conveyorSubsystem.runConveyorCommand(0.5)
+            )
+        )
+    );
+
+    // BUTON 21: Tam Ters Yön (Shooter Geri + 3sn Bekle + Conveyor Geri)
+    m_driverController.button(6).whileTrue(
+        Commands.parallel(
+            m_shooterSubsystem.runShooterCommand(-0.5),
+            Commands.sequence(
+                Commands.waitSeconds(1.0),
+                m_conveyorSubsystem.runConveyorCommand(-0.3)
+            )
+        )
     );
   }
 
