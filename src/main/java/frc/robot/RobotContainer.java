@@ -8,8 +8,12 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.DriveTrainSubsystems;
 import frc.robot.subsystems.ShooterSubsystem;
 import frc.robot.subsystems.ConveyorSubsystem;
+import frc.robot.subsystems.VisionSubsystem;
+import frc.robot.Constants.VisionConstants;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.wpilibj.DriverStation; // İttifak rengi için gerekli
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands; // Komut grupları için gerekli
+import edu.wpi.first.wpilibj2.command.Commands; 
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
@@ -25,8 +29,14 @@ public class RobotContainer {
   private final DriveTrainSubsystems m_robotDrive = new DriveTrainSubsystems();
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
   private final ConveyorSubsystem m_conveyorSubsystem = new ConveyorSubsystem();
+  private final VisionSubsystem m_visionSubsystem = new VisionSubsystem(); // Yeni eklendi
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
+  // PID Kontrolcü (Hizalama için)
+  private final PIDController m_turnController = new PIDController(
+      VisionConstants.kTurnP, 
+      VisionConstants.kTurnI, 
+      VisionConstants.kTurnD
+  );
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
   
@@ -83,14 +93,50 @@ public class RobotContainer {
     );
 
     // BUTON 21: Tam Ters Yön (Shooter Geri + 3sn Bekle + Conveyor Geri)
-    m_driverController.button(6).whileTrue(
+    m_driverController.button(21).whileTrue(
         Commands.parallel(
-            m_shooterSubsystem.runShooterCommand(-0.5),
+            m_shooterSubsystem.runShooterReverseCommand(),
             Commands.sequence(
-                Commands.waitSeconds(1.0),
-                m_conveyorSubsystem.runConveyorCommand(-0.3)
+                Commands.waitSeconds(3.0),
+                m_conveyorSubsystem.reverseConveyorCommand()
             )
         )
+    );
+
+    // VISION HİZALAMA: Buton 7 (Back Tuşu)
+    // Alliance rengine göre doğru AprilTag'e hizalanır.
+    // Mavi İttifak: ID 25, 26 (Mavi Pota Altı)
+    // Kırmızı İttifak: ID 9, 10 (Kırmızı Pota Altı)
+    m_driverController.button(11).whileTrue(
+        m_robotDrive.run(() -> {
+            // İttifak rengini al
+            var alliance = DriverStation.getAlliance();
+            int[] targetTags;
+
+            // Renge göre hedef tag ID'lerini belirle
+            if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+                targetTags = new int[]{7, 8};
+            } else {
+                // Varsayılan Mavi veya renk alınamazsa Mavi (Pota Altı Tagler)
+                targetTags = new int[]{3, 4}; 
+            }
+
+            // Vision subsystem'den bu ID'lerden birini bulmasını iste
+            var target = m_visionSubsystem.getTargetWithId(targetTags);
+            double turnSpeed = 0.0;
+
+            if (target != null) {
+                // Hedef bulunduysa PID hesapla
+                double yawError = target.getYaw();
+                turnSpeed = -m_turnController.calculate(yawError, 0.0);
+                turnSpeed = edu.wpi.first.math.MathUtil.clamp(turnSpeed, -1, 1);
+            } else {
+                // Hedef yoksa dur
+                turnSpeed = 0.0;
+            }
+
+            m_robotDrive.arcadeDrive(0.0, turnSpeed);
+        })
     );
   }
 

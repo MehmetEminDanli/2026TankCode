@@ -77,4 +77,15 @@ public final class Constants {
     public static final int kConveyorSparkID = 40;
     public static final double kConveyorSpeed = 0.5;
   }
+
+  public static class VisionConstants {
+    public static final String kCameraName = "MEDCAM"; // PhotonVision arayüzündeki kamera adını buraya yazın
+    
+    // Hizalama PID Değerleri
+    public static final double kTurnP = 0.05;
+    public static final double kTurnI = 0.0;
+    public static final double kTurnD = 0.0;
+    
+    public static final double kTargetYaw = 0.0; // Hedeflenen açı (tam karşı)
+  }
 }
