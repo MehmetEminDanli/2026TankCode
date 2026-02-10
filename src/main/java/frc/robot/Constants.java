@@ -37,35 +37,46 @@ public final class Constants {
 
     // --- FİZİKSEL ÖLÇÜMLER (MUTLAKA DÜZENLE) ---
     // İki teker arası mesafe (Track Width) - Metre cinsinden ölç!
-    public static final double kTrackWidthMeters = Units.inchesToMeters(24.0); 
+    public static final double kTrackWidthMeters = Units.inchesToMeters(21.0); 
     
     // Tekerlek Yarıçapı (Radius) - Metre cinsinden
     // 6 inç tekerlek için yarıçap 3 inçtir.
     public static final double kWheelRadiusMeters = Units.inchesToMeters(3.0); 
 
     // Sanziman Orani (Gear Ratio)
-    // Motorun bir tur tekerleği döndürmesi için kaç tur atması gerektiği (Kit of Parts chassis genelde 10.71 veya 8.45 olur)
-    public static final double kGearRatio = 10.71;
+    // Motorun bir tur tekerleği döndürmesi için kaç tur atması gerektiği 
+    // HESAPLAMA: EskiOran (10.71) * (HedefYol (200) / GidilenYol (130)) = ~16.48
+    public static final double kGearRatio = 16.48;
 
 
     // --- KONTROL SABİTLERİ (SYSID İLE BULUNMASI ÖNERİLİR) ---
     // Tahmini başlangıç değerleri:
     public static final double kS = 0.22; // Statik Sürtünme (Robotu kıpırdatan min voltaj)
-    public static final double kV = 2.5;  // Hız sabiti (12 Volt / Max Hız formülünden yaklaşık hesap)
+    
+    // kV (Hız Sabiti) - Gear Ratio değişince bu da değişmeli!
+    // Eski Oran (10.71) -> kV = 2.5
+    // Yeni Oran (16.48) -> Robot yavaşladığı için aynı hıza ulaşmak için daha fazla voltaj gerekir.
+    // Hesap: 2.5 * (16.48 / 10.71) = ~3.85
+    public static final double kV = 3.85; 
+    
     public static final double kA = 0.4;  // İvme sabiti
     
-    public static final double kP = 2.0;  // Hatayı düzeltme gücü (Otonomda robot titrerse bunu azalt)
+    // kV düzeltildi ama aşırı titremesini engellemek için P değerini düşürüyoruz.
+    // 2.0 çok agresif geldi, bu yüzden sakinleştiriyoruz.
+    public static final double kP = 0.1;  // 2.0 -> 0.1
     public static final double kI = 0.0;
     public static final double kD = 0.0;
 
-    public static final double kMaxSpeedMetersPerSecond = 4.0; // Robotun max hızı (m/s)
+    // Robotun max hızı düştü (Gear Ratio arttığı için)
+    // 4.0 / 1.53 = ~2.6 m/s
+    public static final double kMaxSpeedMetersPerSecond = 2.6; 
     public static final double kMaxAccelerationMetersPerSecondSquared = 2.5; // Max ivmelenme
 
     public static final DifferentialDriveKinematics kDriveKinematics = new DifferentialDriveKinematics(
         kTrackWidthMeters);
 
   }
-  
+ 
   public static class ShooterConstants {
     public static final int kShooterKrakenID = 22;
     // Tek motorlu Kraken Shooter

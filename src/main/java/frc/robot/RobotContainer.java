@@ -80,8 +80,8 @@ public class RobotContainer {
     // Basılı tutulduğunda çalışır, bırakıldığında durur.
     m_driverController.button(1).whileTrue(m_shooterSubsystem.runShooterReverseCommand());//alma
 
-    // BUTON 20: Shooter Hemen Başlar, 3 Saniye Sonra Conveyor Başlar
-    // İkisi de tuş bırakılınca durur. ATIŞ İÇERİDEN ALMA
+    // BUTON 20: Shooter Hemen Baslar, 3 Saniye Sonra Conveyor Baslar
+    // Ikisi de tus birakilinca durur. ATIS ICERIDEN ALMA
     m_driverController.button(5).whileTrue(
         Commands.parallel(
             m_shooterSubsystem.runShooterCommand(-0.8),

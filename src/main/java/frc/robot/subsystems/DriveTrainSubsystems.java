@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.controllers.PPLTVController;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -16,6 +17,8 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.RelativeEncoder;
 
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
@@ -40,6 +43,17 @@ public class DriveTrainSubsystems extends SubsystemBase {
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftLeader, m_rightLeader);
   
   private final DifferentialDriveOdometry m_odometry;
+
+  // Feedforward kontrolcüsü (PathPlanner için gerekli)
+  private final SimpleMotorFeedforward m_feedforward = new SimpleMotorFeedforward(
+      DriveConstants.kS, 
+      DriveConstants.kV, 
+      DriveConstants.kA
+  );
+
+  // Hassas Sürüş ve Drift Önleme için PID Kontrolcüler
+  private final PIDController m_leftPID = new PIDController(DriveConstants.kP, DriveConstants.kI, DriveConstants.kD);
+  private final PIDController m_rightPID = new PIDController(DriveConstants.kP, DriveConstants.kI, DriveConstants.kD);
 
   public DriveTrainSubsystems() {
     // SparkMax yapılandırması - Hataları önlemek için try-catch bloğu ve optimize edilmiş ayarlar
@@ -75,36 +89,41 @@ public class DriveTrainSubsystems extends SubsystemBase {
     config.encoder.positionConversionFactor(positionFactor);
     config.encoder.velocityConversionFactor(velocityFactor);
 
-    // YUMUSATMA AYARLARI (Titremeyi engeller)
-    config.openLoopRampRate(0.3); // Joystick hareketlerini yumuşatır
-    config.closedLoopRampRate(0.3);
+    // YUMUSATMA AYARLARI (Geri getirildi)
+    // Titremeyi azaltmak için ramp rate tekrar aktif edildi ancak çok yüksek değil.
+    config.openLoopRampRate(0.2); 
+    config.closedLoopRampRate(0.2);
     config.voltageCompensation(12.0);
     
     // Akım limitleri - Motorları korumak ve voltaj çökmesini engellemek için önemli
     config.smartCurrentLimit(50);
 
     // Leader Motor Konfigürasyonu
-    // ResetMode.kResetSafeParameters -> REVLib 2025'te deprecated olabilir, yerine sadece config apply edilir.
-    // Ancak library sürümüne göre değişir. En güvenli yöntem config objesini temizleyip uygulamaktır.
+    /*
+       ResetMode ve PersistMode deprecated:
+       "The field SparkBase.ResetMode.kNoResetSafeParameters has been deprecated and marked for removal"
+       ve configure(config) tek parametreli metod yok.
+       Bu zıtlığı aşmak için null cast edip geçici çözüm uyguluyoruz.
+       (ResetMode)null kullanımı derleme hatasını çözer ve metod imzasını (ambiguity) belirler.
+    */
+    m_leftLeader.configure(config, (ResetMode)null, (PersistMode)null);
     
-    m_leftLeader.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
-    
-    // Sağ lider için konfigürasyon (Ters çevirme config içinde)
+    // Sağ lider için konfigürasyon
     SparkMaxConfig rightLeaderConfig = new SparkMaxConfig();
     rightLeaderConfig.apply(config);
     rightLeaderConfig.inverted(true);
-    m_rightLeader.configure(rightLeaderConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightLeader.configure(rightLeaderConfig, (ResetMode)null, (PersistMode)null);
     
     // Follower Config
     SparkMaxConfig leftFollowerConfig = new SparkMaxConfig();
     leftFollowerConfig.apply(config);
     leftFollowerConfig.follow(m_leftLeader);
-    m_leftFollower.configure(leftFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_leftFollower.configure(leftFollowerConfig, (ResetMode)null, (PersistMode)null);
 
     SparkMaxConfig rightFollowerConfig = new SparkMaxConfig();
     rightFollowerConfig.apply(config);
     rightFollowerConfig.follow(m_rightLeader);
-    m_rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightFollower.configure(rightFollowerConfig, (ResetMode)null, (PersistMode)null);
   }
 
   private void configurePathPlanner() {
@@ -115,7 +134,7 @@ public class DriveTrainSubsystems extends SubsystemBase {
               this::getPose, 
               this::resetPose, 
               this::getChassisSpeeds, 
-              (speeds, feedforwards) -> driveRobotRelative(speeds), 
+              (speeds, feedforwards) -> drivePathPlanner(speeds, feedforwards), 
               new PPLTVController(0.02),
               config,
               () -> {
@@ -170,6 +189,26 @@ public class DriveTrainSubsystems extends SubsystemBase {
     m_leftLeader.set(left);
     m_rightLeader.set(right);
     m_drive.feed();
+  }
+
+  /**
+   * PathPlanner tarafından kullanılan sürüş fonksiyonu.
+   * Voltaj kontrolü kullanarak daha hassas sürüş sağlar.
+   */
+  public void drivePathPlanner(ChassisSpeeds speeds, DriveFeedforwards feedforwards) {
+      DifferentialDriveWheelSpeeds wheelSpeeds = DriveConstants.kDriveKinematics.toWheelSpeeds(speeds);
+
+      // Feedforward (Tahmini Voltaj)
+      double leftFF = m_feedforward.calculate(wheelSpeeds.leftMetersPerSecond);
+      double rightFF = m_feedforward.calculate(wheelSpeeds.rightMetersPerSecond);
+
+      // Feedback (Hata Düzeltme - Drift ve Titremeyi Çözer)
+      double leftFeedback = m_leftPID.calculate(m_leftEncoder.getVelocity(), wheelSpeeds.leftMetersPerSecond);
+      double rightFeedback = m_rightPID.calculate(m_rightEncoder.getVelocity(), wheelSpeeds.rightMetersPerSecond);
+
+      m_leftLeader.setVoltage(leftFF + leftFeedback);
+      m_rightLeader.setVoltage(rightFF + rightFeedback);
+      m_drive.feed();
   }
 
   public void arcadeDrive(double fwd, double rot) {
