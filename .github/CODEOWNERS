@@ -1,0 +1,9 @@
+# CODEOWNERS: otomatik reviewer atamaları
+# Tüm Java kaynak kodları için repo sahibi
+/src/main/java/ @MehmetEminDanli
+
+# Gradle yapılandırması
+/build.gradle @MehmetEminDanli
+
+# Deploy / PathPlanner konfigürasyonu
+/src/main/deploy/ @MehmetEminDanli
