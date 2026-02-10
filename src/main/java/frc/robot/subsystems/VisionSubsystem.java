@@ -35,7 +35,7 @@ public class VisionSubsystem extends SubsystemBase {
   }
 
   /**
-   * En iyi (en büyük/en güvenilir) hedefi döndürür.
+   * En iyi (en büyük/en güvenilir) hedefi döndürür. 
    * @return PhotonTrackedTarget veya null
    */
   public PhotonTrackedTarget getBestTarget() {

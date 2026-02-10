@@ -129,7 +129,7 @@ public class RobotContainer {
                 // Hedef bulunduysa PID hesapla
                 double yawError = target.getYaw();
                 turnSpeed = -m_turnController.calculate(yawError, 0.0);
-                turnSpeed = edu.wpi.first.math.MathUtil.clamp(turnSpeed, -1, 1);
+                turnSpeed = edu.wpi.first.math.MathUtil.clamp(-turnSpeed, -0.4, 0.4);
             } else {
                 // Hedef yoksa dur
                 turnSpeed = 0.0;
