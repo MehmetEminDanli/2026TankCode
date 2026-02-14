@@ -27,9 +27,9 @@ public final class Constants {
 
   public static class DriveConstants {
     // Motor CAN ID'leri
-    public static final int kLeftFrontID = 11;
+    public static final int kLeftFrontID = 11;//11
     public static final int kLeftBackID = 12;//12
-    public static final int kRightFrontID = 13; 
+    public static final int kRightFrontID = 13;//13 
     public static final int kRightBackID = 14; // 4 yerine tahmin ediyorum, SparkMax hatasına göre düzenlenmeli
 
     // Gyro
@@ -46,7 +46,7 @@ public final class Constants {
     // Sanziman Orani (Gear Ratio)
     // Motorun bir tur tekerleği döndürmesi için kaç tur atması gerektiği 
     // HESAPLAMA: EskiOran (10.71) * (HedefYol (200) / GidilenYol (130)) = ~16.48
-    public static final double kGearRatio = 16.48;
+    public static final double kGearRatio = 8.41;
 
 
     // --- KONTROL SABİTLERİ (SYSID İLE BULUNMASI ÖNERİLİR) ---
@@ -92,11 +92,25 @@ public final class Constants {
   public static class VisionConstants {
     public static final String kCameraName = "MEDCAM"; // PhotonVision arayüzündeki kamera adını buraya yazın
     
+    // Robot merkezinden kameraya olan transform (X, Y, Z, Roll, Pitch, Yaw)
+    // Örnek: Robotun 30cm önünde, 20cm solunda, 50cm yukarısında
+    // Bu değerleri robotunuza göre ayarlayın!
+    public static final double kCamX = 0.37; // Metre
+    public static final double kCamY = 0.0;
+    public static final double kCamZ = 0.05;
+    public static final double kCamPitch = 0.0; // Radyan
+    public static final double kCamRoll = 0.0;
+    public static final double kCamYaw = 0.0;
+    
     // Hizalama PID Değerleri
-    public static final double kTurnP = 0.05;
+    public static final double kTurnP = 0.005;
     public static final double kTurnI = 0.0;
     public static final double kTurnD = 0.0;
     
     public static final double kTargetYaw = 0.0; // Hedeflenen açı (tam karşı)
+  }
+
+  public static class IntakeConstants {
+    public static final int intakeID =  19;
   }
 }

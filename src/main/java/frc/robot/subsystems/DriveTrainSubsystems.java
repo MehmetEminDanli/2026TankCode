@@ -21,13 +21,20 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.util.Units; // Corrected import for Units
+import edu.wpi.first.math.numbers.N3; // Might need this for vector types if explicitly defined, but VecBuilder usually handles it.
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.DriveConstants;
+
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class DriveTrainSubsystems extends SubsystemBase {
   private final SparkMax m_leftLeader = new SparkMax(DriveConstants.kLeftFrontID, MotorType.kBrushless);
@@ -42,7 +49,8 @@ public class DriveTrainSubsystems extends SubsystemBase {
   
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftLeader, m_rightLeader);
   
-  private final DifferentialDriveOdometry m_odometry;
+  // Odometri yerine PoseEstimator kullaniyoruz (Vision destegi icin)
+  private final DifferentialDrivePoseEstimator m_poseEstimator;
 
   // Feedforward kontrolcüsü (PathPlanner için gerekli)
   private final SimpleMotorFeedforward m_feedforward = new SimpleMotorFeedforward(
@@ -55,7 +63,13 @@ public class DriveTrainSubsystems extends SubsystemBase {
   private final PIDController m_leftPID = new PIDController(DriveConstants.kP, DriveConstants.kI, DriveConstants.kD);
   private final PIDController m_rightPID = new PIDController(DriveConstants.kP, DriveConstants.kI, DriveConstants.kD);
 
+  // Field (Saha) Gorsellestirme
+  private final Field2d m_field = new Field2d();
+
   public DriveTrainSubsystems() {
+    // Field'i SmartDashboard'a gonder
+    SmartDashboard.putData("Field", m_field);
+
     // SparkMax yapılandırması - Hataları önlemek için try-catch bloğu ve optimize edilmiş ayarlar
     try {
         configureMotors();
@@ -66,11 +80,18 @@ public class DriveTrainSubsystems extends SubsystemBase {
     m_leftEncoder = m_leftLeader.getEncoder();
     m_rightEncoder = m_rightLeader.getEncoder();
 
-    // Odometri başlatma
-    m_odometry = new DifferentialDriveOdometry(
+    // Odometri/PoseEstimator başlatma
+    // Std. Devs: State (Odometri) [x, y, theta] ve Vision [x, y, theta]
+    // Vision verisine yüksek güven (Düşük standart sapma: 0.1m, 10 derece)
+    // Eğer vision verisi gelmezse, odometri (encoder + gyro) kullanılır.
+    m_poseEstimator = new DifferentialDrivePoseEstimator(
+        DriveConstants.kDriveKinematics,
         m_gyro.getRotation2d(), 
         m_leftEncoder.getPosition(), 
-        m_rightEncoder.getPosition()
+        m_rightEncoder.getPosition(),
+        new Pose2d(),
+        VecBuilder.fill(0.05, 0.05, Units.degreesToRadians(5)), 
+        VecBuilder.fill(0.1, 0.1, Units.degreesToRadians(10)) 
     );
 
     // PathPlanner konfigürasyonu - RobotConfig yüklenemezse kodun çökmemesi için koruma
@@ -79,7 +100,7 @@ public class DriveTrainSubsystems extends SubsystemBase {
 
   private void configureMotors() {
     SparkMaxConfig config = new SparkMaxConfig();
-    config.idleMode(IdleMode.kCoast);
+    config.idleMode(IdleMode.kBrake);
     
     // Encoder dönüşüm faktörleri (Meters)
     // 2 * PI * Radius / GearRatio
@@ -90,25 +111,21 @@ public class DriveTrainSubsystems extends SubsystemBase {
     config.encoder.velocityConversionFactor(velocityFactor);
 
     // YUMUSATMA AYARLARI (Geri getirildi)
-    // Titremeyi azaltmak için ramp rate tekrar aktif edildi ancak çok yüksek değil.
-    config.openLoopRampRate(0.2); 
-    config.closedLoopRampRate(0.2);
+    // Dişli sıyırmasını önlemek için rampa süresini arttırdık (0.8 saniye)
+    config.openLoopRampRate(0.4); 
+    config.closedLoopRampRate(0.4);
     config.voltageCompensation(12.0);
     
     // Akım limitleri - Motorları korumak ve voltaj çökmesini engellemek için önemli
     config.smartCurrentLimit(50);
 
-    // Leader Motor Konfigürasyonu
-    /*
-       ResetMode ve PersistMode deprecated:
-       "The field SparkBase.ResetMode.kNoResetSafeParameters has been deprecated and marked for removal"
-       ve configure(config) tek parametreli metod yok.
-       Bu zıtlığı aşmak için null cast edip geçici çözüm uyguluyoruz.
-       (ResetMode)null kullanımı derleme hatasını çözer ve metod imzasını (ambiguity) belirler.
-    */
-    m_leftLeader.configure(config, (ResetMode)null, (PersistMode)null);
+    // Leader Motor Konfigürasyonu (SOL TARAFI TERS ÇEVİR)
+    SparkMaxConfig leftLeaderConfig = new SparkMaxConfig();
+    leftLeaderConfig.apply(config);
+    leftLeaderConfig.inverted(false); // Sol motoru ters çevirdik
+    m_leftLeader.configure(leftLeaderConfig, (ResetMode)null, (PersistMode)null);
     
-    // Sağ lider için konfigürasyon
+    // Sağ lider için konfigürasyon (SAĞ TARAF DA TERS)
     SparkMaxConfig rightLeaderConfig = new SparkMaxConfig();
     rightLeaderConfig.apply(config);
     rightLeaderConfig.inverted(true);
@@ -117,7 +134,7 @@ public class DriveTrainSubsystems extends SubsystemBase {
     // Follower Config
     SparkMaxConfig leftFollowerConfig = new SparkMaxConfig();
     leftFollowerConfig.apply(config);
-    leftFollowerConfig.follow(m_leftLeader);
+    leftFollowerConfig.follow(m_leftLeader); // Leader'ı takip eder (Leader ters ise bu da ters olur)
     m_leftFollower.configure(leftFollowerConfig, (ResetMode)null, (PersistMode)null);
 
     SparkMaxConfig rightFollowerConfig = new SparkMaxConfig();
@@ -154,21 +171,52 @@ public class DriveTrainSubsystems extends SubsystemBase {
 
   @Override
   public void periodic() {
-    m_odometry.update(
+    m_poseEstimator.update(
         m_gyro.getRotation2d(), 
-        m_leftEncoder.getPosition(), 
-        m_rightEncoder.getPosition()
+        -m_leftEncoder.getPosition(), 
+        -m_rightEncoder.getPosition()
     );
+
+    // HATA AYIKLAMA ICIN VERILER
+    SmartDashboard.putNumber("Left Encoder Pos (Meters)", m_leftEncoder.getPosition());
+    SmartDashboard.putNumber("Right Encoder Pos (Meters)", m_rightEncoder.getPosition());
+    SmartDashboard.putNumber("Left Encoder Vel (m/s)", m_leftEncoder.getVelocity());
+    SmartDashboard.putNumber("Right Encoder Vel (m/s)", m_rightEncoder.getVelocity());
+
+    // Motor RPM Hesaplama (Geri Dönüsüm)
+    double velocityFactor = ((Math.PI * 2 * DriveConstants.kWheelRadiusMeters) / DriveConstants.kGearRatio) / 60.0;
+    SmartDashboard.putNumber("Left Motor RPM", m_leftEncoder.getVelocity() / velocityFactor);
+    SmartDashboard.putNumber("Right Motor RPM", m_rightEncoder.getVelocity() / velocityFactor);
+    
+    // Robotun hesaplanan anlik konumu
+    Pose2d pose = getPose();
+    
+    // Field Gorunumunu Guncelle
+    m_field.setRobotPose(pose);
+    
+    SmartDashboard.putNumber("Robot X", pose.getX());
+    SmartDashboard.putNumber("Robot Y", pose.getY());
+    SmartDashboard.putNumber("Robot Heading (Deg)", pose.getRotation().getDegrees()); // Gyro acisi
   }
 
   public Pose2d getPose() {
-    return m_odometry.getPoseMeters();
+    return m_poseEstimator.getEstimatedPosition();
   }
 
   public void resetPose(Pose2d pose) {
     m_leftEncoder.setPosition(0);
     m_rightEncoder.setPosition(0);
-    m_odometry.resetPosition(m_gyro.getRotation2d(), 0, 0, pose);
+    // PoseEstimator icin resetPosition kullanimi
+    m_poseEstimator.resetPosition(m_gyro.getRotation2d(), 0, 0, pose);
+  }
+
+  /**
+   * Vision verisini ekler.
+   * @param pose Vision tarafindan tahmin edilen pozisyon
+   * @param timestamp Vision verisinin alindigi zaman (robot suresi)
+   */
+  public void addVisionMeasurement(Pose2d pose, double timestamp) {
+    m_poseEstimator.addVisionMeasurement(pose, timestamp);
   }
 
   public ChassisSpeeds getChassisSpeeds() {
@@ -212,7 +260,26 @@ public class DriveTrainSubsystems extends SubsystemBase {
   }
 
   public void arcadeDrive(double fwd, double rot) {
-    m_drive.arcadeDrive(fwd, rot);
+    // Manuel Arcade Drive Hesaplaması
+    // DifferentialDrive.arcadeDrive() yerine bunu kullanarak sağ motoru yavaşlatabiliriz.
+    
+    // Sağ taraf %95 güçle çalışacak (0.95 katsayısı)
+    // Eğer sağ taraf hala hızlıysa bu değeri düşürün (0.90, 0.85 gibi)
+    double rightSideCorrection = 0.95;
+
+    double leftSpeed = fwd + rot;
+    double rightSpeed = (fwd - rot) * rightSideCorrection;
+
+    // Normalizasyon (Max 1.0 olacak şekilde)
+    double maxMagnitude = Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed));
+    if (maxMagnitude > 1.0) {
+      leftSpeed /= maxMagnitude;
+      rightSpeed /= maxMagnitude;
+    }
+
+    m_leftLeader.set(leftSpeed);
+    m_rightLeader.set(rightSpeed);
+    m_drive.feed();
   }
 }
 

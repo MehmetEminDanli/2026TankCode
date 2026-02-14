@@ -4,28 +4,57 @@
 
 package frc.robot.commands;
 
-import edu.wpi.first.wpilibj2.command.Command;
+import java.util.function.DoubleSupplier;
 
-/* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.subsystems.DriveTrainSubsystems;
+
 public class JoystickDriveCommand extends Command {
-  /** Creates a new JoystickDriveCommand. */
-  public JoystickDriveCommand() {
-    // Use addRequirements() here to declare subsystem dependencies.
+  private final DriveTrainSubsystems m_driveTrain;
+  private final DoubleSupplier m_speedSupplier;
+  private final DoubleSupplier m_turnSupplier;
+
+  /** 
+   * Joystick ile Arcade Drive kontrolü.
+   * @param driveTrain DriveTrain Subsystem
+   * @param speedSupplier İleri/Geri hız (Joystick Y ekseni)
+   * @param turnSupplier Dönüş hızı (Joystick X veya Z ekseni)
+   */
+  public JoystickDriveCommand(DriveTrainSubsystems driveTrain, DoubleSupplier speedSupplier, DoubleSupplier turnSupplier) {
+    m_driveTrain = driveTrain;
+    m_speedSupplier = speedSupplier;
+    m_turnSupplier = turnSupplier;
+    
+    // Subsystem'i kullanacağımızı sisteme bildiriyoruz (başkası kullanamaz)
+    addRequirements(driveTrain);
   }
 
-  // Called when the command is initially scheduled.
+  // Komut başladığında ne olacak?
   @Override
-  public void initialize() {}
+  public void initialize() {
+    System.out.println("Joystick Drive Started");
+  }
 
-  // Called every time the scheduler runs while the command is scheduled.
+  // Her döngüde (20ms'de bir) çalışacak kısım
   @Override
-  public void execute() {}
+  public void execute() {
+    // Joystick değerlerini doğrudan al
+    double speed = m_speedSupplier.getAsDouble();
+    double turn = m_turnSupplier.getAsDouble();
 
-  // Called once the command ends or is interrupted.
+    // Robotu sür (Basit Arcade Drive)
+    // Eğer robot ters gidiyorsa speed başına - koyun: -speed
+    // Eğer dönmüyorsa turn ve speed yerini değiştirin test edin.
+    m_driveTrain.arcadeDrive(speed, turn * 0.75); // Dönüşü biraz yavaşlattık (%75)
+  }
+
+  // Komut bittiğinde motorları durdur
   @Override
-  public void end(boolean interrupted) {}
+  public void end(boolean interrupted) {
+    m_driveTrain.arcadeDrive(0, 0);
+  }
 
-  // Returns true when the command should end.
+  // Bu komut varsayılan komut olduğu için asla bitmez
   @Override
   public boolean isFinished() {
     return false;
