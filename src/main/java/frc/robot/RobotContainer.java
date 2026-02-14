@@ -160,7 +160,7 @@ public class RobotContainer {
                 // Hedef bulunduysa PID hesapla
                 double yawError = target.getYaw();
                 turnSpeed =  m_turnController.calculate(yawError, 0.0);
-                turnSpeed = edu.wpi.first.math.MathUtil.clamp(-turnSpeed, -0.4, 0.4);
+                turnSpeed = edu.wpi.first.math.MathUtil.clamp(-turnSpeed, -0.2, 0.2);
             } else {
                 // Hedef yoksa dur
                 turnSpeed = 0.0;
@@ -172,11 +172,29 @@ public class RobotContainer {
 
     // VISION POZİSYON GİTME: Buton 4 (Y Tuşu)
     // Robotun o anki (0,0) kabul edilen başlangıç noktasından 2 metre ileriye gitmesini sağlar.
-    m_driverController.button(4).whileTrue(
+   /* m_driverController.button(4).whileTrue(
         new DriveToPoseCommand(
             m_robotDrive, 
             new Pose2d(2.0, 0.0, Rotation2d.fromDegrees(0))
         )
+    ); */
+
+    // --- TEST BUTONLARI ---
+    
+    // BUTON 2: Sadece Leader Motorlar (Follower'lar da dönecek çünkü follow yapılandı)
+    m_driverController.button(2).whileTrue(
+        m_robotDrive.run(() -> m_robotDrive.setLeaderMotors(0.2))
+    );
+
+    // BUTON 3: Sadece Follower Motorlar (DİKKAT: Follower modundaysa çalışmayabilir)
+    // Eğer follow modunda iseler, leader'ı takip edecekleri için lider durduğunda dururlar.
+    m_driverController.button(3).whileTrue(
+        m_robotDrive.run(() -> m_robotDrive.setFollowerMotors(0.2))
+    );
+
+    // BUTON 4: Tüm Robotu Yavaşça İleri Sür (0.2 Hız)
+    m_driverController.button(4).whileTrue(
+        m_robotDrive.run(() -> m_robotDrive.arcadeDrive(0.2, 0.0))
     );
   }
 

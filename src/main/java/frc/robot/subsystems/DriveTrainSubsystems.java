@@ -281,6 +281,19 @@ public class DriveTrainSubsystems extends SubsystemBase {
     m_rightLeader.set(rightSpeed);
     m_drive.feed();
   }
+
+  // Test için özel metodlar
+  public void setLeaderMotors(double speed) {
+      m_leftLeader.set(speed);
+      m_rightLeader.set(speed);
+      m_drive.feed();
+  }
+
+  // Follower motorları sürmeyi dener (Eğer follow modundaysa çalışmayabilir)
+  public void setFollowerMotors(double speed) {
+      m_leftFollower.set(speed);
+      m_rightFollower.set(speed);
+  }
 }
 
 
