@@ -134,12 +134,12 @@ public class DriveTrainSubsystems extends SubsystemBase {
     // Follower Config
     SparkMaxConfig leftFollowerConfig = new SparkMaxConfig();
     leftFollowerConfig.apply(config);
-    leftFollowerConfig.follow(m_leftLeader); // Leader'ı takip eder (Leader ters ise bu da ters olur)
+   // leftFollowerConfig.follow(m_leftLeader); // Leader'ı takip eder (Leader ters ise bu da ters olur)
     m_leftFollower.configure(leftFollowerConfig, (ResetMode)null, (PersistMode)null);
 
     SparkMaxConfig rightFollowerConfig = new SparkMaxConfig();
     rightFollowerConfig.apply(config);
-    rightFollowerConfig.follow(m_rightLeader);
+   // rightFollowerConfig.follow(m_rightLeader);
     m_rightFollower.configure(rightFollowerConfig, (ResetMode)null, (PersistMode)null);
   }
 
@@ -187,7 +187,7 @@ public class DriveTrainSubsystems extends SubsystemBase {
     double velocityFactor = ((Math.PI * 2 * DriveConstants.kWheelRadiusMeters) / DriveConstants.kGearRatio) / 60.0;
     SmartDashboard.putNumber("Left Motor RPM", m_leftEncoder.getVelocity() / velocityFactor);
     SmartDashboard.putNumber("Right Motor RPM", m_rightEncoder.getVelocity() / velocityFactor);
-    
+    // Gyro Açısı
     // Robotun hesaplanan anlik konumu
     Pose2d pose = getPose();
     
